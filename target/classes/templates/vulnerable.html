@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>漏洞测试页面</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>漏洞测试页面</h2>
+        
+        <!-- SQL注入测试 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                SQL注入测试
+            </div>
+            <div class="card-body">
+                <form @submit.prevent="testSqlInjection">
+                    <input type="text" v-model="sqlQuery" class="form-control" placeholder="输入SQL查询...">
+                    <button class="btn btn-primary mt-2">测试</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- XSS测试 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                XSS测试
+            </div>
+            <div class="card-body">
+                <form @submit.prevent="testXss">
+                    <input type="text" v-model="xssPayload" class="form-control" placeholder="输入XSS payload...">
+                    <button class="btn btn-primary mt-2">测试</button>
+                </form>
+                <div v-html="xssResult"></div>
+            </div>
+        </div>
+
+        <!-- 命令注入测试 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                命令注入测试
+            </div>
+            <div class="card-body">
+                <form @submit.prevent="testCommandInjection">
+                    <input type="text" v-model="command" class="form-control" placeholder="输入命令...">
+                    <button class="btn btn-primary mt-2">测试</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 文件上传测试 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                文件上传测试
+            </div>
+            <div class="card-body">
+                <form @submit.prevent="testFileUpload">
+                    <input type="file" class="form-control" @change="handleFileUpload">
+                    <button class="btn btn-primary mt-2">上传</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CSRF测试 -->
+        <div class="card mt-4">
+            <div class="card-header">CSRF测试</div>
+            <div class="card-body">
+                <form @submit.prevent="testCsrf">
+                    <input type="text" v-model="csrfTo" class="form-control mb-2" placeholder="收款人...">
+                    <input type="number" v-model="csrfAmount" class="form-control mb-2" placeholder="金额...">
+                    <button class="btn btn-primary">转账</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SSRF测试 -->
+        <div class="card mt-4">
+            <div class="card-header">SSRF测试</div>
+            <div class="card-body">
+                <form @submit.prevent="testSsrf">
+                    <input type="text" v-model="ssrfUrl" class="form-control" placeholder="输入URL...">
+                    <button class="btn btn-primary mt-2">获取</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- XXE测试 -->
+        <div class="card mt-4">
+            <div class="card-header">XXE测试</div>
+            <div class="card-body">
+                <form @submit.prevent="testXxe">
+                    <textarea v-model="xxePayload" class="form-control" placeholder="输入XML..."></textarea>
+                    <button class="btn btn-primary mt-2">解析</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 权限绕过测试 -->
+        <div class="card mt-4">
+            <div class="card-header">权限绕过测试</div>
+            <div class="card-body">
+                <form @submit.prevent="testAuthBypass">
+                    <input type="text" v-model="role" class="form-control" placeholder="输入角色...">
+                    <button class="btn btn-primary mt-2">访问</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.0/dist/vue.global.js"></script>
+    <script>
+        Vue.createApp({
+            data() {
+                return {
+                    sqlQuery: '',
+                    xssPayload: '',
+                    xssResult: '',
+                    command: '',
+                    selectedFile: null,
+                    csrfTo: '',
+                    csrfAmount: 0,
+                    ssrfUrl: '',
+                    xxePayload: '',
+                    role: ''
+                }
+            },
+            methods: {
+                async testSqlInjection() {
+                    const response = await fetch('/vulnerable/query', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `username=${this.sqlQuery}`
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                async testXss() {
+                    const response = await fetch('/vulnerable/comment', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `comment=${this.xssPayload}`
+                    });
+                    this.xssResult = await response.text();
+                },
+                async testCommandInjection() {
+                    const response = await fetch('/vulnerable/execute', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `command=${this.command}`
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                handleFileUpload(event) {
+                    this.selectedFile = event.target.files[0];
+                },
+                async testFileUpload() {
+                    if (!this.selectedFile) return;
+                    const formData = new FormData();
+                    formData.append('file', this.selectedFile);
+                    const response = await fetch('/vulnerable/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                async testCsrf() {
+                    const response = await fetch('/vulnerable/transfer', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `to=${this.csrfTo}&amount=${this.csrfAmount}`
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                async testSsrf() {
+                    const response = await fetch('/vulnerable/fetch', {
+                        method: 'GET',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        params: {url: this.ssrfUrl}
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                async testXxe() {
+                    const response = await fetch('/vulnerable/parse-xml', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/xml'},
+                        body: this.xxePayload
+                    });
+                    const result = await response.text();
+                    alert(result);
+                },
+                async testAuthBypass() {
+                    const response = await fetch('/vulnerable/admin/data', {
+                        method: 'GET',
+                        headers: {'Role': this.role}
+                    });
+                    const result = await response.text();
+                    alert(result);
+                }
+            }
+        }).mount('.container');
+    </script>
+</body>
+</html> 
